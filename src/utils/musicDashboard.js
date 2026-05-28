@@ -74,7 +74,7 @@ function createDashboardEmbed(queue) {
         : track.title,
     )
     .setURL(track.url)
-    .setThumbnail(track.thumbnail ?? null)
+    .setThumbnail(track.thumbnail || null)
     .addFields(
       {
         name   : '👤 Requested by',
