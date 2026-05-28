@@ -5,6 +5,7 @@ const { useMainPlayer }                     = require('discord-player');
 const {
   createDashboardEmbed,
   createDashboardComponents,
+  updateDashboard,
 } = require('../../utils/musicDashboard');
 
 module.exports = {
@@ -106,6 +107,7 @@ module.exports = {
 
       // Store the message ref so player events can update it
       queue.metadata.dashboardMessage = dashboardMsg;
+      await updateDashboard(queue);
 
     } catch (err) {
       console.error('[/play] Error:', err);

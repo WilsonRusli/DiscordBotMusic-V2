@@ -200,7 +200,12 @@ async function updateDashboard(queue) {
   if (!msg?.editable) return;
 
   if (!queue.currentTrack) {
-    // Queue ended – disable all buttons
+    // Queue ended – hentikan interval dan disable semua tombol
+    if (queue.metadata.progressInterval) {
+      clearInterval(queue.metadata.progressInterval);
+      queue.metadata.progressInterval = null;
+    }
+    
     try {
       const disabledRows = _disableAllButtons(msg.components);
       await msg.edit({ components: disabledRows });
@@ -208,6 +213,7 @@ async function updateDashboard(queue) {
     return;
   }
 
+  // Lakukan update tampilan embed dan tombol
   try {
     await msg.edit({
       embeds     : [createDashboardEmbed(queue)],
@@ -217,6 +223,35 @@ async function updateDashboard(queue) {
     if (!err.message?.includes('Unknown Message')) {
       console.error('[Dashboard] Edit failed:', err.message);
     }
+  }
+
+  // --- SISTEM AUTO-UPDATE PROGRESS BAR ---
+  // Jika lagu sedang berjalan dan belum ada interval yang aktif, buat interval baru
+  if (!queue.node.isPaused() && !queue.metadata.progressInterval) {
+    queue.metadata.progressInterval = setInterval(async () => {
+      // Hentikan jika lagu tiba-tiba hilang atau pause ditekan
+      if (!queue.currentTrack || queue.node.isPaused()) {
+        clearInterval(queue.metadata.progressInterval);
+        queue.metadata.progressInterval = null;
+        return;
+      }
+
+      try {
+        // Edit pesannya setiap 10 detik dengan progres terbaru
+        await msg.edit({
+          embeds: [createDashboardEmbed(queue)],
+        });
+      } catch {
+        // Jika gagal (pesan dihapus user, dll), langsung hentikan interval
+        clearInterval(queue.metadata.progressInterval);
+        queue.metadata.progressInterval = null;
+      }
+    }, 10_000); // 10.000 ms = 10 detik (Jangan terlalu cepat agar tidak kena Limit Discord API)
+  } 
+  // Jika lagu dipause, pastikan interval dimatikan agar bot tidak terus mengedit pesan
+  else if (queue.node.isPaused() && queue.metadata.progressInterval) {
+    clearInterval(queue.metadata.progressInterval);
+    queue.metadata.progressInterval = null;
   }
 }
 
