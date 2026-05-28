@@ -7,7 +7,7 @@ const { updateDashboard } = require('../../utils/musicDashboard');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('autoplay')
-        .setDescription('Mengaktifkan atau mematikan fitur lagu otomatis (Autoplay).'),
+        .setDescription('Toggles the Autoplay feature.'),
 
     async execute(interaction){
         await interaction.deferReply();
