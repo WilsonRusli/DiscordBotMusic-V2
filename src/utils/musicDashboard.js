@@ -62,7 +62,7 @@ function createDashboardEmbed(queue) {
   const statusLabel = isPaused ? 'Paused' : 'Now Playing';
   const accentColor = isPaused ? 0xFFA500 : 0x1DB954; // orange vs Spotify-green
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(accentColor)
     .setAuthor({
       name    : `${statusIcon}  ${statusLabel}`,
@@ -111,7 +111,31 @@ function createDashboardEmbed(queue) {
         value  : buildProgressBar(position, total),
         inline : false,
       },
-    )
+    );
+
+  // ── Field filter aktif (hanya tampil jika ada) ───────────────────────────
+  const activeFilters = queue.filters?.ffmpeg?.filters ?? [];
+  if (activeFilters.length > 0) {
+    try {
+      const { getFilter } = require('./filtersList');
+      const filterText = activeFilters
+        .map((id) => {
+          const meta = getFilter(id);
+          return meta ? `${meta.emoji} ${meta.label}` : id;
+        })
+        .join('  •  ');
+
+      embed.addFields({
+        name   : '🎛️ Active Filters',
+        value  : filterText.length > 1024 ? filterText.slice(0, 1021) + '…' : filterText,
+        inline : false,
+      });
+    } catch (e) {
+      console.error('[Dashboard] Failed to load filtersList:', e.message);
+    }
+  }
+
+  return embed
     .setFooter({ text: 'Use the buttons below to control playback' })
     .setTimestamp();
 }
@@ -124,8 +148,8 @@ function createDashboardEmbed(queue) {
  * @returns {ActionRowBuilder[]}
  */
 function createDashboardComponents(queue) {
-  const isPaused = queue.node.isPaused();
-  const loop     = loopMeta(queue.repeatMode);
+  const isPaused  = queue.node.isPaused();
+  const loop      = loopMeta(queue.repeatMode);
 
   /* Row 1 – Playback controls */
   const row1 = new ActionRowBuilder().addComponents(
@@ -200,7 +224,6 @@ async function updateDashboard(queue) {
   if (!msg?.editable) return;
 
   if (!queue.currentTrack) {
-    // Queue ended – hentikan interval dan disable semua tombol
     if (queue.metadata.progressInterval) {
       clearInterval(queue.metadata.progressInterval);
       queue.metadata.progressInterval = null;
@@ -213,7 +236,6 @@ async function updateDashboard(queue) {
     return;
   }
 
-  // Lakukan update tampilan embed dan tombol
   try {
     await msg.edit({
       embeds     : [createDashboardEmbed(queue)],
@@ -225,11 +247,9 @@ async function updateDashboard(queue) {
     }
   }
 
-  // --- SISTEM AUTO-UPDATE PROGRESS BAR ---
-  // Jika lagu sedang berjalan dan belum ada interval yang aktif, buat interval baru
+  // ─── SISTEM AUTO-UPDATE PROGRESS BAR (10 DETIK) ────────────────────────────
   if (!queue.node.isPaused() && !queue.metadata.progressInterval) {
     queue.metadata.progressInterval = setInterval(async () => {
-      // Hentikan jika lagu tiba-tiba hilang atau pause ditekan
       if (!queue.currentTrack || queue.node.isPaused()) {
         clearInterval(queue.metadata.progressInterval);
         queue.metadata.progressInterval = null;
@@ -237,18 +257,15 @@ async function updateDashboard(queue) {
       }
 
       try {
-        // Edit pesannya setiap 10 detik dengan progres terbaru
         await msg.edit({
           embeds: [createDashboardEmbed(queue)],
         });
       } catch {
-        // Jika gagal (pesan dihapus user, dll), langsung hentikan interval
         clearInterval(queue.metadata.progressInterval);
         queue.metadata.progressInterval = null;
       }
-    }, 10_000); // 10.000 ms = 10 detik (Jangan terlalu cepat agar tidak kena Limit Discord API)
+    }, 10_000); 
   } 
-  // Jika lagu dipause, pastikan interval dimatikan agar bot tidak terus mengedit pesan
   else if (queue.node.isPaused() && queue.metadata.progressInterval) {
     clearInterval(queue.metadata.progressInterval);
     queue.metadata.progressInterval = null;
