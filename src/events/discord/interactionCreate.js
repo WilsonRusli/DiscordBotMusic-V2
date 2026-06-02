@@ -1,7 +1,5 @@
 'use strict';
 
-const { InteractionType } = require('discord.js');
-
 module.exports = {
   name   : 'interactionCreate',
   once   : false,
@@ -74,23 +72,6 @@ module.exports = {
           await interaction.reply(payload).catch(() => {});
         }
       }
-      return;
-    }
-    // ── String Select Menu ─────────────────────────────────────────────────────
-    // Select menu dari /filter sudah dihandle oleh collector di filter.js.
-    // Blok ini hanya sebagai safety-net: jika collector sudah expire dan user
-    // masih klik, berikan pesan informatif.
-    if (interaction.isStringSelectMenu()) {
-      if (
-        interaction.customId === 'filter_select_cat' ||
-        interaction.customId === 'filter_select_filter'
-      ) {
-        return interaction.reply({
-          content  : '⏰ Sesi filter sudah kedaluwarsa. Gunakan `/filter` lagi.',
-          ephemeral: true,
-        });
-      }
-      // Select menu lain yang tidak dikenal – abaikan
       return;
     }
   },
