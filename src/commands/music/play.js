@@ -1,7 +1,7 @@
 'use strict';
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { useMainPlayer }                     = require('discord-player');
+const { useMainPlayer, QueryType }                     = require('discord-player');
 const {
   createDashboardEmbed,
   createDashboardComponents,
